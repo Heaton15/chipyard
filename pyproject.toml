@@ -1,0 +1,25 @@
+[project]
+name = "chipyard"
+version = "0.1.0"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib==3.10.1",
+    "pydantic==2.10.6",
+    "pyqt5==5.15.11",
+    "pyright>=1",
+    "scipy==1.15.2",
+]
+
+[tool.uv.sources]
+sim-flow = { path = "sim_flow" }
+
+# Only use the system-installed Python, don't let uv download it
+[tool.uv]
+python-downloads = "never"
+python-preference = "only-system"
+
+[tool.ruff]
+exclude = [".venv", "README.md"]
+line-length = 99
+target-version = "py312"
