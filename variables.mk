@@ -4,15 +4,12 @@
 #   prints all the HELP_LINES
 #########################################################################################
 HELP_COMPILATION_VARIABLES = \
-"   JAVA_HEAP_SIZE    = if overridden, set the default java heap size (default is 8G)" \
-"   JAVA_TOOL_OPTIONS = if overridden, set underlying java tool options (default sets misc. sizes and tmp dir)" \
-"   SBT_OPTS          = set additional sbt command line options (these take the form -Dsbt.<option>=<setting>) " \
-"                       See https://www.scala-sbt.org/1.x/docs/Command-Line-Reference.html\#Command+Line+Options" \
-"   SBT               = if overridden, used to invoke sbt (default is to invoke sbt by sbt-launch.jar)" \
+"   MILL_ARGS            = set additional mill command line options" \
+"   MILL                 = override to change mill binary"
 
 HELP_PROJECT_VARIABLES = \
 "   SUB_PROJECT            = use the specific subproject default variables [$(SUB_PROJECT)]" \
-"   SBT_PROJECT            = the SBT project that you should find the classes/packages in [$(SBT_PROJECT)]" \
+"   BASE_PROJECT           = the Scala project that you should find the classes/packages in [$(BASE_PROJECT)]" \
 "   MODEL                  = the top level module of the project in Chisel (normally the harness) [$(MODEL)]" \
 "   VLOG_MODEL             = the top level module of the project in Firrtl/Verilog (normally the harness) [$(VLOG_MODEL)]" \
 "   MODEL_PACKAGE          = the scala package to find the MODEL in [$(MODEL_PACKAGE)]" \
@@ -69,19 +66,19 @@ HELP_LINES = "" \
 SUB_PROJECT ?= chipyard
 
 ifeq ($(SUB_PROJECT),chipyard)
-	SBT_PROJECT       ?= chipyard
+	BASE_PROJECT      ?= chipyard
 	MODEL             ?= TestHarness
 	VLOG_MODEL        ?= $(MODEL)
 	MODEL_PACKAGE     ?= chipyard.harness
 	CONFIG            ?= RocketConfig
-	CONFIG_PACKAGE    ?= $(SBT_PROJECT)
-	GENERATOR_PACKAGE ?= $(SBT_PROJECT)
+	CONFIG_PACKAGE    ?= $(BASE_PROJECT)
+	GENERATOR_PACKAGE ?= $(BASE_PROJECT)
 	TB                ?= TestDriver
 	TOP               ?= ChipTop
 endif
 # For TestChipIP developers running unit-tests
 ifeq ($(SUB_PROJECT),testchipip)
-	SBT_PROJECT       ?= chipyard
+	BASE_PROJECT      ?= chipyard
 	MODEL             ?= TestHarness
 	VLOG_MODEL        ?= $(MODEL)
 	MODEL_PACKAGE     ?= chipyard.unittest
@@ -93,7 +90,7 @@ ifeq ($(SUB_PROJECT),testchipip)
 endif
 # For rocketchip developers running unit-tests
 ifeq ($(SUB_PROJECT),rocketchip)
-	SBT_PROJECT       ?= chipyard
+	BASE_PROJECT      ?= chipyard
 	MODEL             ?= TestHarness
 	VLOG_MODEL        ?= $(MODEL)
 	MODEL_PACKAGE     ?= chipyard.unittest
@@ -105,7 +102,7 @@ ifeq ($(SUB_PROJECT),rocketchip)
 endif
 # For IceNet developers
 ifeq ($(SUB_PROJECT),icenet)
-	SBT_PROJECT       ?= chipyard
+	BASE_PROJECT      ?= chipyard
 	MODEL             ?= TestHarness
 	VLOG_MODEL        ?= $(MODEL)
 	MODEL_PACKAGE     ?= chipyard.unittest
@@ -117,7 +114,7 @@ ifeq ($(SUB_PROJECT),icenet)
 endif
 # For Constellation developers
 ifeq ($(SUB_PROJECT),constellation)
-	SBT_PROJECT       ?= chipyard
+	BASE_PROJECT      ?= chipyard
 	MODEL             ?= TestHarness
 	VLOG_MODEL        ?= $(MODEL)
 	MODEL_PACKAGE     ?= constellation.test
@@ -129,7 +126,7 @@ ifeq ($(SUB_PROJECT),constellation)
 endif
 # For graphics developers
 ifeq ($(SUB_PROJECT),coalescer)
-	SBT_PROJECT       ?= chipyard
+	BASE_PROJECT      ?= chipyard
 	MODEL             ?= TestHarness
 	VLOG_MODEL        ?= $(MODEL)
 	MODEL_PACKAGE     ?= chipyard.unittest
@@ -140,7 +137,7 @@ ifeq ($(SUB_PROJECT),coalescer)
 	TOP               ?= UnitTestSuite
 endif
 ifeq ($(SUB_PROJECT),tensor)
-	SBT_PROJECT       ?= chipyard
+	BASE_PROJECT      ?= chipyard
 	MODEL             ?= TestHarness
 	VLOG_MODEL        ?= $(MODEL)
 	MODEL_PACKAGE     ?= chipyard.unittest
@@ -167,22 +164,9 @@ CHIPYARD_RSRCS_DIR   = $(base_dir)/generators/chipyard/src/main/resources
 #########################################################################################
 long_name = $(MODEL_PACKAGE).$(MODEL).$(CONFIG)
 
-# classpaths
-CLASSPATH_CACHE ?= $(base_dir)/.classpath_cache
-# The generator classpath must contain the Generator main
-GENERATOR_CLASSPATH ?= $(CLASSPATH_CACHE)/$(SBT_PROJECT).jar
-# The tapeout classpath must contain MacroCompiler
-TAPEOUT_CLASSPATH ?= $(CLASSPATH_CACHE)/tapeout.jar
-
 # chisel generated outputs
 FIRRTL_FILE ?= $(build_dir)/$(long_name).fir
 ANNO_FILE   ?= $(build_dir)/$(long_name).anno.json
-CHISEL_LOG_FILE ?= $(build_dir)/$(long_name).chisel.log
-FIRTOOL_LOG_FILE ?= $(build_dir)/$(long_name).firtool.log
-
-# chisel anno modification output
-MFC_EXTRA_ANNO_FILE ?= $(build_dir)/$(long_name).extrafirtool.anno.json
-FINAL_ANNO_FILE ?= $(build_dir)/$(long_name).appended.anno.json
 
 # firtool compiler outputs
 MFC_TOP_HRCHY_JSON ?= $(build_dir)/top_module_hierarchy.json
@@ -226,41 +210,11 @@ sim_common_files       ?= $(build_dir)/sim_files.common.f
 
 MFC_LOWERING_OPTIONS ?= $(build_dir)/.mfc_lowering_options
 
-#########################################################################################
-# java arguments used in sbt
-#########################################################################################
-JAVA_HEAP_SIZE ?= 8G
-JAVA_TMP_DIR ?= $(base_dir)/.java_tmp
-export JAVA_TOOL_OPTIONS ?= -Xmx$(JAVA_HEAP_SIZE) -Xss8M -Djava.io.tmpdir=$(JAVA_TMP_DIR)
-
-#########################################################################################
-# default sbt launch command
-#########################################################################################
-SCALA_BUILDTOOL_DEPS = $(SBT_SOURCES)
-
-# passes $(JAVA_TOOL_OPTIONS) from env to java
-export SBT_OPTS ?= -Dsbt.ivy.home=$(base_dir)/.ivy2 -Dsbt.global.base=$(base_dir)/.sbt -Dsbt.boot.directory=$(base_dir)/.sbt/boot/ -Dsbt.color=always -Dsbt.supershell=false -Dsbt.server.forcestart=true
-SBT ?= java -jar $(base_dir)/scripts/sbt-launch.jar $(SBT_OPTS)
-
-# (1) - classpath of the fat jar
-# (2) - main class
-# (3) - main class arguments
-define run_jar_scala_main
-	cd $(base_dir) && java -cp $(1) $(2) $(3)
-endef
-
-# (1) - sbt project
-# (2) - main class
-# (3) - main class arguments
-define run_scala_main
-	cd $(base_dir) && $(SBT) ";project $(1); runMain $(2) $(3)"
-endef
-
-# (1) - sbt project to assemble
-# (2) - classpath file(s) to create
-define run_sbt_assembly
-	cd $(base_dir) && $(SBT) ";project $(1); set assembly / assemblyOutputPath := file(\"$(2)\"); assembly" && touch $(2)
-endef
+# Mill's client-server mode relies on locking files (using Java's
+# `FileLock.tryLock` method). This is unreliable on network file systems, so we
+# disable the mill server with the `--no-server` flag.
+MILL_ARGS ?= --no-server
+MILL ?= ./mill
 
 #########################################################################################
 # output directory for tests
@@ -303,7 +257,7 @@ gen_dir             =$(sim_dir)/$(generated_src_name)
 # per-project output directory
 build_dir           =$(gen_dir)/$(long_name)
 # final generated collateral per-project
-GEN_COLLATERAL_DIR ?=$(build_dir)/gen-collateral
+GEN_COLLATERAL_DIR ?= $(build_dir)/gen-collateral
 
 #########################################################################################
 # simulation variables

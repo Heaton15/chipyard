@@ -1,0 +1,197 @@
+import mill._
+import mill.scalalib._
+import mill.scalalib.scalafmt._
+
+// Support ScalaPy
+import $ivy.`ai.kien::python-native-libs:0.2.2`
+
+// Scalafix
+import $ivy.`com.goyeau::mill-scalafix::0.5.0`
+import com.goyeau.mill.scalafix.ScalafixModule
+
+object v {
+  val scalaVersion      = "2.13.16"
+  val chiselVersion     = "7.0.0-RC1+4-fe547683-SNAPSHOT"
+  val chiselTestVersion = "6.0.0"
+
+  /* Dependencies */
+
+  // Chisel packages.
+  val chisel       = ivy"org.chipsalliance::chisel:${chiselVersion}"
+  val chiselPlugin = ivy"org.chipsalliance:::chisel-plugin:${chiselVersion}"
+  val chiselTest   = ivy"edu.berkeley.cs::chiseltest:${chiselTestVersion}"
+
+  // Other Scala packages.
+  val breeze        = ivy"org.scalanlp::breeze:2.1.0"
+  val json4sJackson = ivy"org.json4s::json4s-jackson:4.0.6"
+  val mainargs      = ivy"com.lihaoyi::mainargs:0.7.6"
+  val osLib         = ivy"com.lihaoyi::os-lib:0.11.3"
+  val scalaGraph    = ivy"org.scala-graph::graph-core:1.13.5"
+  val scalaPy       = ivy"me.shadaj::scalapy-core:0.5.2"
+  val scalaTest     = ivy"org.scalatest::scalatest:3.2.19"
+  val sourceCode    = ivy"com.lihaoyi::sourcecode:0.3.1"
+  val spire         = ivy"org.typelevel::spire:0.18.0"
+  val upickle       = ivy"com.lihaoyi::upickle:4.1.0"
+  val utest         = ivy"com.lihaoyi::utest:0.8.5"
+
+  // Other Scala packages that don't have a `scalaVersion` suffix in the `artifactID`.
+  val reflections  = ivy"org.reflections:reflections:0.10.2"
+  val scalaReflect = ivy"org.scala-lang:scala-reflect:${scalaVersion}"
+}
+
+trait BaseModule extends ScalaModule {
+  def scalaVersion = v.scalaVersion
+}
+
+trait ChiselModule extends BaseModule {
+  def ivyDeps             = Agg(v.chisel)
+  def scalacPluginIvyDeps = Agg(v.chiselPlugin)
+
+  // Options recommended by Chisel. Inspect these when updating Chisel versions.
+  def scalacOptions = Seq(
+    "-unchecked",
+    "-deprecation",
+    "-language:reflectiveCalls",
+    "-feature",
+    "-Xcheckinit",
+    "-Ywarn-dead-code",
+    "-Ywarn-unused",
+    "-Ymacro-annotations",
+  )
+
+  def repositoriesTask = Task.Anon {
+    super.repositoriesTask() ++
+    Seq(coursier.maven.MavenRepository("https://s01.oss.sonatype.org/content/repositories/snapshots"))
+  }
+}
+
+trait TdhModule extends ChiselModule with ScalafmtModule with ScalafixModule
+
+/* Library definitions */
+
+object tools extends Module {
+  object cde extends BaseModule {
+    def millSourcePath = super.millSourcePath / "cde"
+  }
+
+  // This is the main entry-point for executing the Chisel generator, which generates FIRRTL. This project must be the
+  // parent of all projects which define CDE Config classes (such as `fpga` and `generators.chipyard`) since this
+  // project executes the constructor for those classes.
+  object `chisel-driver` extends TdhModule {
+    def ivyDeps    = super.ivyDeps() ++ Agg(v.mainargs)
+    def moduleDeps = Seq(fpga, generators.chipyard)
+
+    // Prohibit warnings
+    def scalacOptions = super.scalacOptions() ++ Seq("-Werror")
+
+    // Support ScalaPy
+    override def forkArgs = {
+      import ai.kien.python.Python
+      lazy val python   = Python()
+      lazy val javaOpts = python.scalapyProperties.get.map { case (k, v) => s"""-D$k=$v""" }.toSeq
+      javaOpts
+    }
+  }
+
+  object fixedpoint extends ChiselModule with SbtModule {}
+
+  object dsptools extends ChiselModule with SbtModule {
+    def ivyDeps    = super.ivyDeps() ++ Agg(v.breeze, v.chiselTest, v.spire)
+    def moduleDeps = Seq(fixedpoint)
+  }
+
+  object `rocket-dsp-utils` extends ChiselModule with SbtModule {
+    def moduleDeps = Seq(dsptools, generators.`rocket-chip`)
+  }
+}
+
+object generators extends Module {
+
+  /* New Projects */
+
+  /* Upstream projects */
+
+  object boom extends ChiselModule with SbtModule {
+    def moduleDeps = Seq(`rocket-chip`)
+  }
+
+  object chipyard extends ChiselModule with SbtModule {
+    def ivyDeps = super.ivyDeps() ++ Agg(v.reflections, v.scalaGraph)
+    def moduleDeps = Seq(
+      // New projects
+      // Upstream projects
+      tools.dsptools,
+      tools.`rocket-dsp-utils`,
+      boom,
+      constellation,
+      `fft-generator`,
+      `rocket-chip`,
+      `rocket-chip-blocks`,
+      `rocket-chip-inclusive-cache`,
+      saturn,
+      shuttle,
+      testchipip,
+      tracegen,
+    )
+  }
+
+  object constellation extends ChiselModule with SbtModule {
+    def moduleDeps = Seq(`rocket-chip`)
+  }
+
+  object diplomacy extends ChiselModule {
+    def ivyDeps        = super.ivyDeps() ++ Agg(v.sourceCode)
+    def millSourcePath = super.millSourcePath / "diplomacy"
+    def moduleDeps     = Seq(tools.cde)
+  }
+
+  object `fft-generator` extends ChiselModule with SbtModule {
+    def moduleDeps = Seq(`rocket-chip`, tools.`rocket-dsp-utils`)
+  }
+
+  object hardfloat extends ChiselModule with SbtModule {
+    def millSourcePath = super.millSourcePath / "hardfloat"
+  }
+
+  object `rocket-chip` extends ChiselModule with SbtModule {
+    def moduleDeps = Seq(tools.cde, diplomacy, hardfloat, macros)
+    def ivyDeps    = super.ivyDeps() ++ Agg(v.mainargs, v.json4sJackson, v.sourceCode)
+
+    object macros extends BaseModule with SbtModule {
+      def ivyDeps = Agg(v.scalaReflect)
+    }
+  }
+
+  object `rocket-chip-blocks` extends ChiselModule with SbtModule {
+    def moduleDeps = Seq(`rocket-chip`)
+  }
+
+  object `rocket-chip-inclusive-cache` extends ChiselModule {
+    def millSourcePath = super.millSourcePath / "design" / "craft" / "inclusivecache"
+    def moduleDeps     = Seq(`rocket-chip`)
+  }
+
+  object saturn extends ChiselModule with SbtModule {
+    def moduleDeps = Seq(`rocket-chip`, shuttle)
+  }
+
+  object shuttle extends ChiselModule with SbtModule {
+    def moduleDeps = Seq(`rocket-chip`)
+  }
+
+  object testchipip extends ChiselModule with SbtModule {
+    def moduleDeps = Seq(`rocket-chip`, `rocket-chip-blocks`)
+  }
+
+  object tracegen extends ChiselModule with SbtModule {
+    def moduleDeps = Seq(boom, `rocket-chip`, `rocket-chip-inclusive-cache`, testchipip)
+  }
+}
+
+object fpga extends ChiselModule with SbtModule {
+  def moduleDeps = Seq(generators.chipyard, `fpga-shells`)
+
+  object `fpga-shells` extends ChiselModule with SbtModule {
+    def moduleDeps = Seq(generators.`rocket-chip`, generators.`rocket-chip-blocks`)
+  }
+}
