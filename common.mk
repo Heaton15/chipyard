@@ -415,13 +415,13 @@ dramsim_lib = $(dramsim_dir)/libdramsim.a
 $(dramsim_lib):
 	$(MAKE) -C $(dramsim_dir) $(notdir $@)
 
-################################################
-# Helper to run SBT
-################################################
-SBT_COMMAND ?= shell
-.PHONY: launch-sbt
-launch-sbt:
-	cd $(base_dir) && $(SBT) "$(SBT_COMMAND)"
+######################
+# Helper to run mill
+######################
+MILL_COMMAND ?= resolve _
+.PHONY: run-mill
+run-mill:
+	cd $(base_dir) && $(MILL) $(MILL_ARGS) $(MILL_COMMAND)
 
 #########################################################################################
 # print help text (and other help)
