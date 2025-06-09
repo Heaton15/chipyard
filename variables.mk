@@ -125,6 +125,9 @@ ifeq ($(SUB_PROJECT),constellation)
 	TOP               ?= NoC
 endif
 
+# Ignore warnings internal to other projects
+CHISEL_WARN_CONF_FILE = $(base_dir)/chisel-warnings.conf
+
 #########################################################################################
 # path to rocket-chip and testchipip
 #########################################################################################

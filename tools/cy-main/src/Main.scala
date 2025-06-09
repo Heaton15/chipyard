@@ -65,11 +65,6 @@ object Main {
       os.write.over(os.Path(targetDir) / s"${outputBaseName}.${ext}", contents())
     }
 
-    // Identical to ElaborationArtefacts except that the outputBaseName is
-    // removed to control the file naming convention.
-    niobium.blocks.util.CustomFileEmission.files.foreach { case (fileName, contents) =>
-      os.write.over(os.Path(targetDir) / s"${fileName}", contents())
-    }
   }
 
   def main(args: Array[String]): Unit = ParserForMethods(this).runOrExit(args.toIndexedSeq)

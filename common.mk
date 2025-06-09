@@ -81,7 +81,7 @@ CHECK_SUBMODULES_COMMAND = echo "Checking all submodules in generators/ are init
 
 SCALA_EXT = scala
 VLOG_EXT = sv v
-CHIPYARD_SOURCE_DIRS = $(addprefix $(base_dir)/,generators fpga/fpga-shells fpga/src fpga/nb-fpga-shells fpga/nb-fpga)
+CHIPYARD_SOURCE_DIRS = $(addprefix $(base_dir)/,generators fpga/fpga-shells fpga/src)
 CHIPYARD_SCALA_SOURCES = $(call lookup_srcs_by_multiple_type,$(CHIPYARD_SOURCE_DIRS),$(SCALA_EXT))
 CHIPYARD_VLOG_SOURCES = $(call lookup_srcs_by_multiple_type,$(CHIPYARD_SOURCE_DIRS),$(VLOG_EXT))
 SRAM_COMPILER_SOURCE_DIRS = $(addprefix $(base_dir)/,tools/sram-compiler)

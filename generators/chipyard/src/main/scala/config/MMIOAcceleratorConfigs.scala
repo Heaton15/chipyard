@@ -56,16 +56,6 @@ class StreamingFIRRocketConfig extends Config (
   new chipyard.config.AbstractConfig)
 // DOC include end: StreamingFIRRocketConfig
 
-class SmallNVDLARocketConfig extends Config(
-  new nvidia.blocks.dla.WithNVDLA("small") ++               // add a small NVDLA
-  new freechips.rocketchip.rocket.WithNHugeCores(1) ++
-  new chipyard.config.AbstractConfig)
-
-class LargeNVDLARocketConfig extends Config(
-  new nvidia.blocks.dla.WithNVDLA("large", true) ++         // add a large NVDLA with synth. rams
-  new freechips.rocketchip.rocket.WithNHugeCores(1) ++
-  new chipyard.config.AbstractConfig)
-
 class ManyMMIOAcceleratorRocketConfig extends Config(
   new chipyard.example.WithInitZero(0x88000000L, 0x1000L) ++   // add InitZero
   new fftgenerator.WithFFTGenerator(numPoints=8, width=16, decPt=8) ++ // add 8-point mmio fft at the default addr (0x2400) with 16bit fixed-point numbers.

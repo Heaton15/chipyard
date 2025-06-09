@@ -74,8 +74,7 @@ object tools extends Module {
     def millSourcePath = super.millSourcePath / "cde"
   }
 
-  // We learned that it's a good idea to create a main entry point for Mill that
-  // uses the CLI arguments to create a 
+  // Main entry point for chipyard builds
   object `cy-main` extends TdhModule {
     def ivyDeps    = super.ivyDeps() ++ Agg(v.mainargs)
     def moduleDeps = Seq(fpga, generators.chipyard)
@@ -119,6 +118,7 @@ object generators extends Module {
     def moduleDeps = Seq(
       // New projects
       // Upstream projects
+      tools.dsptools,
       tools.`rocket-dsp-utils`,
       boom,
       constellation,
