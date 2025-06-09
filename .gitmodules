@@ -28,6 +28,9 @@
 [submodule "generators/rocket-chip-inclusive-cache"]
 	path = generators/rocket-chip-inclusive-cache
 	url = https://github.com/chipsalliance/rocket-chip-inclusive-cache.git
+[submodule "generators/shuttle"]
+    path = generators/shuttle
+    url = https://github.com/ucb-bar/shuttle.git
 [submodule "generators/testchipip"]
 	path = generators/testchipip
 	url = https://github.com/ucb-bar/testchipip.git
