@@ -144,7 +144,7 @@ object generators extends Module {
   }
 
   object `fft-generator` extends ChiselModule with SbtModule {
-    def moduleDeps = Seq(`rocket-chip`, tools.`rocket-dsp-utils`)
+    def moduleDeps = Seq(`rocket-chip`, tools.`rocket-dsp-utils`, testchipip)
   }
 
   object hardfloat extends ChiselModule with SbtModule {
