@@ -124,30 +124,6 @@ ifeq ($(SUB_PROJECT),constellation)
 	TB                ?= TestDriver
 	TOP               ?= NoC
 endif
-# For graphics developers
-ifeq ($(SUB_PROJECT),coalescer)
-	BASE_PROJECT      ?= chipyard
-	MODEL             ?= TestHarness
-	VLOG_MODEL        ?= $(MODEL)
-	MODEL_PACKAGE     ?= chipyard.unittest
-	CONFIG            ?= CoalescingUnitTestConfig
-	CONFIG_PACKAGE    ?= radiance.unittest
-	GENERATOR_PACKAGE ?= chipyard
-	TB                ?= TestDriver
-	TOP               ?= UnitTestSuite
-endif
-ifeq ($(SUB_PROJECT),tensor)
-	BASE_PROJECT      ?= chipyard
-	MODEL             ?= TestHarness
-	VLOG_MODEL        ?= $(MODEL)
-	MODEL_PACKAGE     ?= chipyard.unittest
-	CONFIG            ?= TensorUnitTestConfig
-	CONFIG_PACKAGE    ?= radiance.unittest
-	GENERATOR_PACKAGE ?= chipyard
-	TB                ?= TestDriver
-	TOP               ?= UnitTestSuite
-endif
-
 
 #########################################################################################
 # path to rocket-chip and testchipip
@@ -171,7 +147,6 @@ ANNO_FILE   ?= $(build_dir)/$(long_name).anno.json
 # firtool compiler outputs
 MFC_TOP_HRCHY_JSON ?= $(build_dir)/top_module_hierarchy.json
 MFC_MODEL_HRCHY_JSON ?= $(build_dir)/model_module_hierarchy.json
-MFC_MODEL_HRCHY_JSON_UNIQUIFIED ?= $(build_dir)/model_module_hierarchy.uniquified.json
 MFC_SMEMS_CONF ?= $(build_dir)/$(long_name).mems.conf
 # hardcoded firtool outputs
 MFC_FILELIST = $(GEN_COLLATERAL_DIR)/filelist.f
@@ -179,12 +154,18 @@ MFC_BB_MODS_FILELIST = $(GEN_COLLATERAL_DIR)/firrtl_black_box_resource_files.f
 MFC_TOP_SMEMS_JSON = $(GEN_COLLATERAL_DIR)/metadata/seq_mems.json
 
 # macrocompiler smems in/output
-TOP_SMEMS_CONF ?= $(build_dir)/$(long_name).top.mems.conf
-TOP_SMEMS_FILE ?= $(GEN_COLLATERAL_DIR)/$(long_name).top.mems.v
-TOP_SMEMS_FIR  ?= $(build_dir)/$(long_name).top.mems.fir
-MODEL_SMEMS_CONF ?= $(build_dir)/$(long_name).model.mems.conf
-MODEL_SMEMS_FILE ?= $(GEN_COLLATERAL_DIR)/$(long_name).model.mems.v
-MODEL_SMEMS_FIR  ?= $(build_dir)/$(long_name).model.mems.fir
+TOP_SMEMS_MFC_FILELIST   = $(TOP_MEMS_GEN_COLLATERAL_DIR)/filelist.f
+MODEL_SMEMS_MFC_FILELIST = $(MODEL_MEMS_GEN_COLLATERAL_DIR)/filelist.f
+
+TOP_SMEMS_PREFIX ?= top.mems
+MODEL_SMEMS_PREFIX ?= model.mems
+
+TOP_SMEMS_CONF       = $(build_dir)/$(long_name).$(TOP_SMEMS_PREFIX).conf
+TOP_SMEMS_FIR        = $(build_dir)/$(long_name).$(TOP_SMEMS_PREFIX).fir
+TOP_SMEMS_FILELIST   = $(build_dir)/$(long_name).$(TOP_SMEMS_PREFIX).f
+MODEL_SMEMS_CONF     = $(build_dir)/$(long_name).$(MODEL_SMEMS_PREFIX).conf
+MODEL_SMEMS_FIR      = $(build_dir)/$(long_name).$(MODEL_SMEMS_PREFIX).fir
+MODEL_SMEMS_FILELIST = $(build_dir)/$(long_name).$(MODEL_SMEMS_PREFIX).f
 
 # top module files to include
 TOP_MODS_FILELIST ?= $(build_dir)/$(long_name).top.f
@@ -195,6 +176,10 @@ MODEL_MODS_FILELIST ?= $(build_dir)/$(long_name).model.f
 BB_MODS_FILELIST ?= $(build_dir)/$(long_name).bb.f
 # all module files to include (top, model, bb included)
 ALL_MODS_FILELIST ?= $(build_dir)/$(long_name).all.f
+# all Chisel layers files to include
+ALL_LAYERS_FILELIST ?= $(build_dir)/$(long_name).all_layers.f
+# top module files for synthesis flow, paths are relative to the build directory
+SYN_MODS_FILELIST ?= $(build_dir)/$(long_name).syn.f
 
 # external filelists. Users, or project-supplied make fragments can append filelists
 # with absolute paths here
@@ -208,7 +193,28 @@ sim_files              ?= $(build_dir)/sim_files.f
 # single file that contains all files needed for VCS or Verilator simulation (unique and without .h's)
 sim_common_files       ?= $(build_dir)/sim_files.common.f
 
-MFC_LOWERING_OPTIONS ?= $(build_dir)/.mfc_lowering_options
+# The build flow generates a number of filelists with absolute paths (from `$(base_dir)`), but we
+# want relative filelists that work across machines. The build flow will generate the `.f.abs`
+# files with absolute paths, and we'll convert those into `.f` files without the absolute paths.
+# Note that `$(SYN_MODS_FILELIST)` isn't in this list, since it isn't generated from an
+# absolute-path filelist of the same name.
+RELATIVE_FILELISTS = \
+	$(TOP_MODS_FILELIST) \
+	$(MODEL_MODS_FILELIST) \
+	$(BB_MODS_FILELIST) \
+	$(ALL_MODS_FILELIST) \
+	$(ALL_LAYERS_FILELIST) \
+	$(TOP_SMEMS_FILELIST) \
+	$(MODEL_SMEMS_FILELIST) \
+	$(sim_files) \
+	$(sim_common_files)
+ABSOLUTE_FILELISTS = $(addsuffix .abs,$(RELATIVE_FILELISTS))
+
+#########################################################################################
+# build tool arguments
+#########################################################################################
+# By default, use colorful output from Chisel
+export CHISEL_USE_COLOR ?= true
 
 # Mill's client-server mode relies on locking files (using Java's
 # `FileLock.tryLock` method). This is unreliable on network file systems, so we
@@ -257,7 +263,9 @@ gen_dir             =$(sim_dir)/$(generated_src_name)
 # per-project output directory
 build_dir           =$(gen_dir)/$(long_name)
 # final generated collateral per-project
-GEN_COLLATERAL_DIR ?= $(build_dir)/gen-collateral
+GEN_COLLATERAL_DIR            ?= $(build_dir)/gen-collateral
+TOP_MEMS_GEN_COLLATERAL_DIR    = $(GEN_COLLATERAL_DIR)/top-mems
+MODEL_MEMS_GEN_COLLATERAL_DIR  = $(GEN_COLLATERAL_DIR)/model-mems
 
 #########################################################################################
 # simulation variables

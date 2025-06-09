@@ -18,22 +18,17 @@ HELP_COMPILATION_VARIABLES += \
 "   EXTRA_SIM_REQS            = additional make requirements to build the simulator" \
 "   EXTRA_SIM_OUT_NAME        = additional suffix appended to the simulation .out log filename" \
 "   EXTRA_SIM_PREPROC_DEFINES = additional Verilog preprocessor defines passed to the simulator" \
-"   ENABLE_YOSYS_FLOW         = if set, add compilation flags to enable the vlsi flow for yosys(tutorial flow)" \
 "   EXTRA_CHISEL_OPTIONS      = additional options to pass to the Chisel compiler" \
-"   MFC_BASE_LOWERING_OPTIONS = override lowering options to pass to the MLIR FIRRTL compiler" \
-"   ASPECTS                   = comma separated list of Chisel aspect flows to run (e.x. chipyard.upf.ChipTopUPFAspect)"
+"   EXTRA_FIRTOOL_ARGS        = additional options to pass to firtool" \
+"   MFC_LOWERING_OPTIONS      = override lowering options to pass to the MLIR FIRRTL compiler"
 
 EXTRA_GENERATOR_REQS ?=
 EXTRA_SIM_CXXFLAGS   ?=
 EXTRA_SIM_LDFLAGS    ?=
 EXTRA_SIM_SOURCES    ?=
 EXTRA_SIM_REQS       ?=
+EXTRA_FIRTOOL_ARGS   ?=
 EXTRA_SIM_OUT_NAME   ?=
-
-ifneq ($(ASPECTS), )
-	comma = ,
-	ASPECT_ARGS = $(foreach aspect, $(subst $(comma), , $(ASPECTS)), --with-aspect $(aspect))
-endif
 
 #----------------------------------------------------------------------------
 HELP_SIMULATION_VARIABLES += \
@@ -56,8 +51,8 @@ HELP_COMMANDS += \
 "   run-binaries-debug          = run [./$(shell basename $(sim_debug))] and log instructions and waveform to files" \
 "   verilog                     = generate intermediate verilog files from chisel elaboration and firrtl passes" \
 "   firrtl                      = generate intermediate firrtl files from chisel elaboration" \
+"   run-mill                    = run a mill command by setting MILL_COMMAND" \
 "   run-tests                   = run all assembly and benchmark tests" \
-"   launch-sbt                  = start sbt terminal" \
 "   find-config-fragments       = list all config. fragments" \
 "   check-submodule-status      = check that all submodules in generators/ have been initialized"
 
@@ -91,48 +86,20 @@ CHECK_SUBMODULES_COMMAND = echo "Checking all submodules in generators/ are init
 
 SCALA_EXT = scala
 VLOG_EXT = sv v
-FIRESIM_SOURCE_DIRS = $(addprefix sims/firesim/,sim/firesim-lib sim/midas/targetutils) $(addprefix generators/firechip/,chip bridgeinterfaces bridgestubs) tools/firrtl2
-CHIPYARD_SOURCE_DIRS = \
-	$(filter-out $(base_dir)/generators/firechip,$(wildcard $(addprefix $(base_dir)/,generators/* fpga/fpga-shells fpga/src tools/stage))) \
-	$(addprefix $(base_dir)/,$(FIRESIM_SOURCE_DIRS))
+CHIPYARD_SOURCE_DIRS = $(addprefix $(base_dir)/,generators fpga/fpga-shells fpga/src fpga/nb-fpga-shells fpga/nb-fpga)
 CHIPYARD_SCALA_SOURCES = $(call lookup_srcs_by_multiple_type,$(CHIPYARD_SOURCE_DIRS),$(SCALA_EXT))
 CHIPYARD_VLOG_SOURCES = $(call lookup_srcs_by_multiple_type,$(CHIPYARD_SOURCE_DIRS),$(VLOG_EXT))
-TAPEOUT_SOURCE_DIRS = $(addprefix $(base_dir)/,tools/tapeout)
-TAPEOUT_SCALA_SOURCES = $(call lookup_srcs_by_multiple_type,$(TAPEOUT_SOURCE_DIRS),$(SCALA_EXT))
-TAPEOUT_VLOG_SOURCES = $(call lookup_srcs_by_multiple_type,$(TAPEOUT_SOURCE_DIRS),$(VLOG_EXT))
-# This assumes no SBT meta-build sources
-SBT_SOURCE_DIRS = $(addprefix $(base_dir)/,generators tools)
-SBT_SOURCES = $(call lookup_srcs,$(SBT_SOURCE_DIRS),sbt) $(base_dir)/build.sbt $(base_dir)/project/plugins.sbt $(base_dir)/project/build.properties
+SRAM_COMPILER_SOURCE_DIRS = $(addprefix $(base_dir)/,tools/sram-compiler)
+SRAM_COMPILER_SCALA_SOURCES = $(call lookup_srcs_by_multiple_type,$(SRAM_COMPILER_SOURCE_DIRS),$(SCALA_EXT))
+SRAM_COMPILER_VLOG_SOURCES = $(call lookup_srcs_by_multiple_type,$(SRAM_COMPILER_SOURCE_DIRS),$(VLOG_EXT))
+SCALA_BUILDTOOL_DEPS = $(base_dir)/build.mill
 
 $(build_dir):
 	mkdir -p $@
 
 #########################################################################################
-# compile scala jars
-#########################################################################################
-$(GENERATOR_CLASSPATH) &: $(CHIPYARD_SCALA_SOURCES) $(SCALA_BUILDTOOL_DEPS) $(CHIPYARD_VLOG_SOURCES)
-	$(CHECK_SUBMODULES_COMMAND)
-	mkdir -p $(dir $@)
-	$(call run_sbt_assembly,$(SBT_PROJECT),$(GENERATOR_CLASSPATH))
-
-# order only dependency between sbt runs needed to avoid concurrent sbt runs
-$(TAPEOUT_CLASSPATH) &: $(TAPEOUT_SCALA_SOURCES) $(SCALA_BUILDTOOL_DEPS) $(TAPEOUT_VLOG_SOURCES) | $(GENERATOR_CLASSPATH)
-	mkdir -p $(dir $@)
-	$(call run_sbt_assembly,tapeout,$(TAPEOUT_CLASSPATH))
-
-#########################################################################################
 # verilog generation pipeline
 #########################################################################################
-# AG: must re-elaborate if cva6 sources have changed... otherwise just run firrtl compile
-$(FIRRTL_FILE) $(ANNO_FILE) $(CHISEL_LOG_FILE) &: $(GENERATOR_CLASSPATH) $(EXTRA_GENERATOR_REQS)
-	mkdir -p $(build_dir)
-	(set -o pipefail && $(call run_jar_scala_main,$(GENERATOR_CLASSPATH),$(GENERATOR_PACKAGE).Generator,\
-		--target-dir $(build_dir) \
-		--name $(long_name) \
-		--top-module $(MODEL_PACKAGE).$(MODEL) \
-		--legacy-configs $(CONFIG_PACKAGE):$(CONFIG) \
-		$(ASPECT_ARGS) \
-		$(EXTRA_CHISEL_OPTIONS)) | tee $(CHISEL_LOG_FILE))
 
 define mfc_extra_anno_contents
 [
@@ -151,13 +118,20 @@ define mfc_extra_anno_contents
 ]
 endef
 export mfc_extra_anno_contents
-export sfc_extra_low_transforms_anno_contents
-$(FINAL_ANNO_FILE) $(MFC_EXTRA_ANNO_FILE) &: $(ANNO_FILE)
-	echo "$$mfc_extra_anno_contents" > $(MFC_EXTRA_ANNO_FILE)
-	jq -s '[.[][]]' $(ANNO_FILE) $(MFC_EXTRA_ANNO_FILE) > $(FINAL_ANNO_FILE)
+
+$(FIRRTL_FILE) $(ANNO_FILE) &: $(CHIPYARD_SCALA_SOURCES) $(CHIPYARD_VLOG_SOURCES) $(SCALA_BUILDTOOL_DEPS) $(EXTRA_GENERATOR_REQS)
+	mkdir -p $(build_dir)
+	cd $(base_dir) && $(MILL) $(MILL_ARGS) tools.cy-main \
+		--output-dir $(build_dir) \
+		--top $(MODEL_PACKAGE).$(MODEL) \
+		--config $(CONFIG_PACKAGE).$(CONFIG) \
+		--output-base-name $(long_name) \
+		--warn-conf-file $(CHISEL_WARN_CONF_FILE) \
+		$(EXTRA_CHISEL_OPTIONS)
+	echo "$$mfc_extra_anno_contents" > $(ANNO_FILE)
 
 .PHONY: firrtl
-firrtl: $(FIRRTL_FILE) $(FINAL_ANNO_FILE)
+firrtl: $(FIRRTL_FILE) $(ANNO_FILE)
 
 #########################################################################################
 # create verilog files rules and variables
@@ -169,37 +143,32 @@ SFC_MFC_TARGETS = \
 	$(MFC_MODEL_HRCHY_JSON) \
 	$(MFC_FILELIST) \
 	$(MFC_BB_MODS_FILELIST) \
-	$(GEN_COLLATERAL_DIR) \
-	$(FIRTOOL_LOG_FILE)
+	$(GEN_COLLATERAL_DIR)
 
-MFC_BASE_LOWERING_OPTIONS ?= emittedLineLength=2048,noAlwaysComb,disallowLocalVariables,verifLabels,disallowPortDeclSharing,locationInfoStyle=wrapInAtSquareBracket
+MFC_LOWERING_OPTIONS ?= emittedLineLength=2048,noAlwaysComb,disallowLocalVariables,verifLabels,disallowPortDeclSharing,locationInfoStyle=wrapInAtSquareBracket
+
+MFC_COMMON_OPTIONS = \
+	--format=fir \
+	--verify-each=true \
+	--warn-on-unprocessed-annotations \
+	--disable-annotation-classless \
+	--disable-annotation-unknown \
+	--mlir-timing \
+	--lowering-options=$(MFC_LOWERING_OPTIONS) \
+	--split-verilog
 
 # DOC include start: FirrtlCompiler
-$(MFC_LOWERING_OPTIONS):
-	mkdir -p $(dir $@)
-ifeq (,$(ENABLE_YOSYS_FLOW))
-	echo "$(MFC_BASE_LOWERING_OPTIONS)" > $@
-else
-	echo "$(MFC_BASE_LOWERING_OPTIONS),disallowPackedArrays" > $@
-endif
-
-$(SFC_MFC_TARGETS) &: $(FIRRTL_FILE) $(FINAL_ANNO_FILE) $(MFC_LOWERING_OPTIONS)
+$(SFC_MFC_TARGETS) &: $(FIRRTL_FILE) $(ANNO_FILE)
 	rm -rf $(GEN_COLLATERAL_DIR)
-	(set -o pipefail && firtool \
-		--format=fir \
+	firtool \
+		$(MFC_COMMON_OPTIONS) \
 		--export-module-hierarchy \
-		--verify-each=true \
-		--warn-on-unprocessed-annotations \
-		--disable-annotation-classless \
-		--disable-annotation-unknown \
-		--mlir-timing \
-		--lowering-options=$(shell cat $(MFC_LOWERING_OPTIONS)) \
 		--repl-seq-mem \
 		--repl-seq-mem-file=$(MFC_SMEMS_CONF) \
-		--annotation-file=$(FINAL_ANNO_FILE) \
-		--split-verilog \
+		--annotation-file=$(ANNO_FILE) \
+		$(EXTRA_FIRTOOL_ARGS) \
 		-o $(GEN_COLLATERAL_DIR) \
-		$(FIRRTL_FILE) |& tee $(FIRTOOL_LOG_FILE))
+		$(FIRRTL_FILE)
 	$(SED) -i 's/.*/& /' $(MFC_SMEMS_CONF) # need trailing space for SFC macrocompiler
 	touch $(MFC_BB_MODS_FILELIST) # if there are no BB's then the file might not be generated, instead always generate it
 # DOC include end: FirrtlCompiler

@@ -74,10 +74,9 @@ object tools extends Module {
     def millSourcePath = super.millSourcePath / "cde"
   }
 
-  // This is the main entry-point for executing the Chisel generator, which generates FIRRTL. This project must be the
-  // parent of all projects which define CDE Config classes (such as `fpga` and `generators.chipyard`) since this
-  // project executes the constructor for those classes.
-  object `chisel-driver` extends TdhModule {
+  // We learned that it's a good idea to create a main entry point for Mill that
+  // uses the CLI arguments to create a 
+  object `cy-main` extends TdhModule {
     def ivyDeps    = super.ivyDeps() ++ Agg(v.mainargs)
     def moduleDeps = Seq(fpga, generators.chipyard)
 
@@ -120,7 +119,6 @@ object generators extends Module {
     def moduleDeps = Seq(
       // New projects
       // Upstream projects
-      tools.dsptools,
       tools.`rocket-dsp-utils`,
       boom,
       constellation,
