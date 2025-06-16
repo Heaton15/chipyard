@@ -12,32 +12,3 @@ import freechips.rocketchip.diplomacy._
 import chipyard.stage._
 
 case object TargetDirKey extends Field[String](".")
-
-/** Constructs a generator function that returns a top module with given config parameters */
-class PreElaboration extends Phase with PreservesAll with HasChipyardStageUtils {
-
-  override val prerequisites = Seq(Dependency[Checks])
-  override val optionalPrerequisiteOf = Seq(Dependency[chisel3.stage.phases.Elaborate])
-
-  override def transform(annotations: AnnotationSeq): AnnotationSeq = {
-
-    val stageOpts = view[StageOptions](annotations)
-    val rOpts = view[ChipyardOptions](annotations)
-    val topMod = rOpts.topModule.get
-
-    val config = getConfig(rOpts.configNames.get).alterPartial {
-      case TargetDirKey => stageOpts.targetDir
-    }
-
-    val gen = () =>
-      topMod
-        .getConstructor(classOf[Parameters])
-        .newInstance(config) match {
-          case a: RawModule => a
-          case a: LazyModule => LazyModule(a).module
-        }
-
-    ChiselGeneratorAnnotation(gen) +: annotations
-  }
-
-}
