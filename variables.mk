@@ -125,6 +125,20 @@ ifeq ($(SUB_PROJECT),constellation)
 	TOP               ?= NoC
 endif
 
+# User Added Projects
+ifeq ($(SUB_PROJECT),tdh)
+	BASE_PROJECT      ?= chipyard
+	MODEL             ?= BlockHarness
+	VLOG_MODEL        ?= $(MODEL)
+	MODEL_PACKAGE     ?= chipyard.tdh
+	CONFIG            ?=
+	CONFIG_PACKAGE    ?= chipyard.tdh
+	GENERATOR_PACKAGE ?= $(BASE_PROJECT)
+	TB                ?= TestDriver
+	TOP               ?=
+	EXTRA_SIM_SOURCES ?= +define+MODEL=BlockHarness
+endif
+
 # Ignore warnings internal to other projects
 CHISEL_WARN_CONF_FILE = $(base_dir)/chisel-warnings.conf
 
