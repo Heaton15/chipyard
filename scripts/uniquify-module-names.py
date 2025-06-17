@@ -5,6 +5,7 @@ import argparse
 import shutil
 import os
 import sys
+from pathlib import Path
 
 
 parser = argparse.ArgumentParser(description="")
@@ -62,16 +63,18 @@ def get_modules_in_filelist(filelist, verilog_module_filename, cc_filelist):
   with open(filelist) as fl:
     lines = fl.readlines()
     for line in lines:
-      path = line.strip()
-      basepath = os.path.basename(path)
-      ext = basepath.split(".")[-1]
+      # It is possible for the path files to contain more to the path than just
+      # gen-collateral/module_name.v, such as gen-collateral/verification/assert/verif_module.sv
+      # This change preserves the leading path components and allows us to still uniquify the modules
+      path = Path(line.strip())
+      ext = path.suffix.lstrip(".")
 
       if (ext == "v") or (ext == "sv"):
-        modules = get_modules_in_verilog_file(os.path.join(args.gcpath, basepath))
+        modules = get_modules_in_verilog_file(os.path.join(args.gcpath, path))
         for module in modules:
-          verilog_module_filename[module] = basepath
+          verilog_module_filename[module] = path.name
       else:
-        cc_filelist.append(basepath)
+        cc_filelist.append(path.name)
   return (verilog_module_filename, cc_filelist)
 
 def get_modules_under_hier(hier, child_to_ignore=None):
