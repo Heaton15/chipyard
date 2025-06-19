@@ -92,10 +92,10 @@ object tools extends Module {
   }
 
   object `sram-generator` extends TdhModule {
-    def ivyDeps = super.ivyDeps() ++ Agg(v.mainargs)
+    def ivyDeps = super.ivyDeps() ++ Agg(v.mainargs, v.upickle)
 
     object test extends ScalaTests with TestModule.Utest with ScalafixModule {
-      def ivyDeps = Agg(v.utest)
+      def ivyDeps = Agg(v.utest, v.upickle)
     }
   }
 

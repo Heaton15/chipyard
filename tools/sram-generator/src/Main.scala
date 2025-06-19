@@ -12,7 +12,7 @@ object Main {
     @arg(name = "macro-conf", doc = "The set of memories to compile")
     macroConfFile: String,
     @arg(name = "macro-library-file", doc = "MDF JSON file containing available memory macros")
-    macroMdfFile: String,
+    macroJsonFile: Option[String],
     @arg(
       name = "force-synflops",
       doc  = "A list of SRAMs that should be forced to to behavioral SRAM despite --mode=strict",
@@ -30,7 +30,14 @@ object Main {
     println("This is the entry point for the SRAM Generator")
 
     ChiselStage.emitCHIRRTLFile(
-      new SramGeneratorContainer(),
+      new SramGeneratorContainer(
+        CompilerMode.toModeType(modeStr),
+        macroConfFile,
+        macroJsonFile,
+        forceSynflopsMems,
+        useCompiler.value,
+        outSramJsonPath,
+      ),
       Array(
         "--target-dir",
         outputDir,
