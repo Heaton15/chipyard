@@ -91,6 +91,14 @@ object tools extends Module {
     }
   }
 
+  object `sram-generator` extends TdhModule {
+    def ivyDeps = super.ivyDeps() ++ Agg(v.mainargs)
+
+    object test extends ScalaTests with TestModule.Utest with ScalafixModule {
+      def ivyDeps = Agg(v.utest)
+    }
+  }
+
   object fixedpoint extends ChiselModule with SbtModule {}
 
   object dsptools extends ChiselModule with SbtModule {
