@@ -179,9 +179,11 @@ TOP_SMEMS_PREFIX ?= top.mems
 MODEL_SMEMS_PREFIX ?= model.mems
 
 TOP_SMEMS_CONF       = $(build_dir)/$(long_name).$(TOP_SMEMS_PREFIX).conf
+TOP_SMEMS_FILE       = $(build_dir)/$(long_name).$(TOP_SMEMS_PREFIX).v
 TOP_SMEMS_FIR        = $(build_dir)/$(long_name).$(TOP_SMEMS_PREFIX).fir
 TOP_SMEMS_FILELIST   = $(build_dir)/$(long_name).$(TOP_SMEMS_PREFIX).f
 MODEL_SMEMS_CONF     = $(build_dir)/$(long_name).$(MODEL_SMEMS_PREFIX).conf
+MODEL_SMEMS_FILE     = $(build_dir)/$(long_name).$(MODEL_SMEMS_PREFIX).v
 MODEL_SMEMS_FIR      = $(build_dir)/$(long_name).$(MODEL_SMEMS_PREFIX).fir
 MODEL_SMEMS_FILELIST = $(build_dir)/$(long_name).$(MODEL_SMEMS_PREFIX).f
 
