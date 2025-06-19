@@ -30,3 +30,6 @@ project/project/
 .classpath_cache/
 .vscode/
 tests/build/
+
+# User Added ignores for chipyard project
+out/
