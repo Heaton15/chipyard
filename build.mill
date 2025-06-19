@@ -114,7 +114,7 @@ object generators extends Module {
   }
 
   object chipyard extends ChiselModule with SbtModule {
-    def ivyDeps = super.ivyDeps() ++ Agg(v.reflections, v.scalaGraph)
+    def ivyDeps    = super.ivyDeps() ++ Agg(v.reflections, v.scalaGraph)
     def moduleDeps = Seq(
       // New projects
       // Upstream projects
