@@ -1,4 +1,4 @@
-package chipyard.tdh.configs
+package chipyard.tdh
 
 import chisel3._
 import chipyard.tdh.TopModuleKey
