@@ -29,10 +29,14 @@ object Main {
   ) = {
     println("This is the entry point for the SRAM Generator")
 
+    // Grab all of the memory configurations from the *mems.conf file
+    val macroConfFiles = scala.io.Source.fromFile(macroConfFile).getLines().map(ConfParser.fromString).toSeq
+    val macroJsonFile  = ???
+
     ChiselStage.emitCHIRRTLFile(
       new SramGeneratorContainer(
-        CompilerMode.toModeType(modeStr),
-        macroConfFile,
+        CompilerMode.fromString(modeStr),
+        macroConfFiles,
         macroJsonFile,
         forceSynflopsMems,
         useCompiler.value,

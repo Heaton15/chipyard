@@ -7,7 +7,12 @@ object ConfParserTest extends TestSuite {
 
   val tests = Tests {
     test("conf_parsing") {
-      assert(conf == conf)
+      val parsedConf                  = ConfParser.fromString(conf)
+      val memPorts: Map[MemPort, Int] = Map(
+        MaskedReadWritePort -> 1
+      )
+      val goldenConf = MemConf("cc_dir_ext", BigInt(1024), 136, memPorts, Some(17))
+      assert(parsedConf == goldenConf)
     }
 
   }

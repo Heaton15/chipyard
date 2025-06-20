@@ -4,8 +4,8 @@ import chisel3._
 
 class SramGeneratorContainer(
   mode:              CompilerMode,
-  confFile:          String,
-  macroJsonFile:     Option[String],
+  confFile:          Seq[MemConf],
+  macroJsonFile:     Option[SramMacro],
   forceSynflopsMems: Seq[String],
   useCompiler:       Boolean,
   outSramJsonPath:   Option[String],
@@ -13,7 +13,7 @@ class SramGeneratorContainer(
 
 sealed trait CompilerMode
 object CompilerMode {
-  def toModeType(mode: String): CompilerMode = {
+  def fromString(mode: String): CompilerMode = {
     mode match {
       case "synflops" => SynFlops
       case "strict"   => Strict
@@ -22,5 +22,6 @@ object CompilerMode {
 
   }
 }
+
 case object SynFlops extends CompilerMode
 case object Strict   extends CompilerMode
