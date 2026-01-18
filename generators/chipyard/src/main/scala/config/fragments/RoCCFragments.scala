@@ -6,6 +6,7 @@ import org.chipsalliance.cde.config.{Field, Parameters, Config}
 import freechips.rocketchip.tile._
 import freechips.rocketchip.diplomacy._
 
+
 import chipyard.{TestSuitesKey, TestSuiteHelper}
 
 /**
@@ -31,3 +32,16 @@ class WithMultiRoCCFromBuildRoCC(harts: Int*) extends Config((site, here, up) =>
   }
 })
 
+class WithAccumulatorRoCC(op: OpcodeSet = OpcodeSet.custom1) extends Config((site, here, up) => {
+  case BuildRoCC => up(BuildRoCC) ++ Seq((p: Parameters) => {
+    val accumulator = LazyModule(new AccumulatorExample(op, n = 4)(p))
+    accumulator
+  })
+})
+
+class WithCharacterCountRoCC(op: OpcodeSet = OpcodeSet.custom2) extends Config((site, here, up) => {
+  case BuildRoCC => up(BuildRoCC) ++ Seq((p: Parameters) => {
+    val counter = LazyModule(new CharacterCountExample(op)(p))
+    counter
+  })
+})

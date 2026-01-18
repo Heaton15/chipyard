@@ -6,13 +6,6 @@ import org.chipsalliance.cde.config.{Config}
 // Configs with MMIO accelerators
 // ------------------------------
 
-// DOC include start: FFTRocketConfig
-class FFTRocketConfig extends Config(
-  new fftgenerator.WithFFTGenerator(numPoints=8, width=16, decPt=8) ++ // add 8-point mmio fft at the default addr (0x2400) with 16bit fixed-point numbers.
-  new freechips.rocketchip.rocket.WithNHugeCores(1) ++
-  new chipyard.config.AbstractConfig)
-// DOC include end: FFTRocketConfig
-
 // DOC include start: GCDTLRocketConfig
 class GCDTLRocketConfig extends Config(
   new chipyard.example.WithGCD(useAXI4=false, useBlackBox=false) ++          // Use GCD Chisel, connect Tilelink

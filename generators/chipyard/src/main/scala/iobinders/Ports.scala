@@ -11,6 +11,7 @@ import testchipip.spi.{SPIChipIO}
 import testchipip.cosim.{TraceOutputTop, SpikeCosimConfig}
 import testchipip.iceblk.{BlockDeviceIO, BlockDeviceConfig}
 import testchipip.tsi.{UARTTSIIO}
+import testchipip.ctc.{CTCBridgeIO}
 import org.chipsalliance.cde.config.{Parameters}
 import freechips.rocketchip.amba.axi4.{AXI4Bundle, AXI4EdgeParameters}
 import freechips.rocketchip.subsystem.{MemoryPortParams, MasterPortParams, SlavePortParams}
@@ -111,3 +112,5 @@ case class GCDBusyPort     (val getIO: () => Bool)
 case class OffchipSelPort  (val getIO: () => UInt)
     extends Port[UInt]
 
+case class CTCPort (val getIO: () => Data, val portId: Int) 
+    extends Port[Data]
