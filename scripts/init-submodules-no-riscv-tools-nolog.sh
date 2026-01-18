@@ -298,11 +298,6 @@ cd "$RDIR"
     submodule_name="generators/rocket-chip"
     git submodule update --init generators/rocket-chip || exit 1
 
-    # Minimal non-recursive clone to initialize sbt dependencies
-    submodule_name="sims/firesim"
-    git submodule update --init sims/firesim || exit 1
-    git config --local submodule.sims/firesim.update none
-
     # Non-recursive clone
     submodule_name="tools/rocket-dsp-utils"
     git submodule update --init tools/rocket-dsp-utils || exit 1
@@ -311,12 +306,4 @@ cd "$RDIR"
     submodule_name="tools/dsptools"
     git submodule update --init tools/dsptools || exit 1
 
-    # Only shallow clone needed for basic SW tests
-    submodule_name="software/firemarshal"
-    git submodule update --init software/firemarshal || exit 1
 )
-
-# Configure firemarshal to know where our firesim installation is
-if [ ! -f ./software/firemarshal/marshal-config.yaml ]; then
-  echo "firesim-dir: '../../sims/firesim/'" > ./software/firemarshal/marshal-config.yaml
-fi
