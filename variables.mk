@@ -23,7 +23,7 @@ endif
 #########################################################################################
 HELP_COMPILATION_VARIABLES = \
 "   MILL_ARGS            = set additional mill command line options" \
-"   MILL                 = override to change mill binary"
+"   MILL                 = override to change mill binary" \
 "   FIRTOOL_BIN       = path to CIRCT firtool (default: 'firtool' in PATH)" \
 "   USE_CHISEL7       = EXPERIMENTAL: set to '1' to build with Chisel 7" \
 

@@ -187,7 +187,6 @@ FIRTOOL_EXTRA_FLAGS += --verification-flavor=if-else-fatal --disable-layers=Veri
 endif
 
 # DOC include start: FirrtlCompiler
-<<<<<<< HEAD
 $(SFC_MFC_TARGETS) &: $(FIRRTL_FILE) $(ANNO_FILE)
 	rm -rf $(GEN_COLLATERAL_DIR)
 	firtool \
