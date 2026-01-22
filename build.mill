@@ -122,6 +122,7 @@ object generators extends Module {
       tools.`rocket-dsp-utils`,
       boom,
       constellation,
+      barf,
       `fft-generator`,
       `rocket-chip`,
       `rocket-chip-blocks`,
@@ -134,6 +135,11 @@ object generators extends Module {
   }
 
   object constellation extends ChiselModule with SbtModule {
+    def moduleDeps = Seq(`rocket-chip`)
+  }
+
+  object barf extends ChiselModule with SbtModule {
+    override def millSourcePath = super.millSourcePath / os.up / "bar-fetchers"
     def moduleDeps = Seq(`rocket-chip`)
   }
 
