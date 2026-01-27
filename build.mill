@@ -1,42 +1,40 @@
+//| mill-version: 1.0.6-jvm
+//| mvnDeps:
+//| - ai.kien::python-native-libs:0.2.2
+//| - com.goyeau::mill-scalafix::0.6.0
+
 import mill._
 import mill.scalalib._
 import mill.scalalib.scalafmt._
 
-// Support ScalaPy
-import $ivy.`ai.kien::python-native-libs:0.2.2`
-
-// Scalafix
-import $ivy.`com.goyeau::mill-scalafix::0.5.0`
 import com.goyeau.mill.scalafix.ScalafixModule
 
 object v {
-  val scalaVersion      = "2.13.16"
-  val chiselVersion     = "7.0.0-RC1+4-fe547683-SNAPSHOT"
-  val chiselTestVersion = "6.0.0"
+  val scalaVersion      = "2.13.18"
+  val chiselVersion     = "7.7.0"
 
   /* Dependencies */
 
   // Chisel packages.
-  val chisel       = ivy"org.chipsalliance::chisel:${chiselVersion}"
-  val chiselPlugin = ivy"org.chipsalliance:::chisel-plugin:${chiselVersion}"
-  val chiselTest   = ivy"edu.berkeley.cs::chiseltest:${chiselTestVersion}"
+  val chisel       = mvn"org.chipsalliance::chisel:${chiselVersion}"
+  val chiselPlugin = mvn"org.chipsalliance:::chisel-plugin:${chiselVersion}"
 
   // Other Scala packages.
-  val breeze        = ivy"org.scalanlp::breeze:2.1.0"
-  val json4sJackson = ivy"org.json4s::json4s-jackson:4.0.6"
-  val mainargs      = ivy"com.lihaoyi::mainargs:0.7.6"
-  val osLib         = ivy"com.lihaoyi::os-lib:0.11.3"
-  val scalaGraph    = ivy"org.scala-graph::graph-core:1.13.5"
-  val scalaPy       = ivy"me.shadaj::scalapy-core:0.5.2"
-  val scalaTest     = ivy"org.scalatest::scalatest:3.2.19"
-  val sourceCode    = ivy"com.lihaoyi::sourcecode:0.3.1"
-  val spire         = ivy"org.typelevel::spire:0.18.0"
-  val upickle       = ivy"com.lihaoyi::upickle:4.1.0"
-  val utest         = ivy"com.lihaoyi::utest:0.8.5"
+  val breeze        = mvn"org.scalanlp::breeze:2.1.0"
+  val json4sJackson = mvn"org.json4s::json4s-jackson:4.0.6"
+  val mainargs      = mvn"com.lihaoyi::mainargs:0.7.6"
+  val osLib         = mvn"com.lihaoyi::os-lib:0.11.3"
+  val scalaGraph    = mvn"org.scala-graph::graph-core:1.13.5"
+  val scalaPy       = mvn"me.shadaj::scalapy-core:0.5.2"
+  val scalaTest     = mvn"org.scalatest::scalatest:3.2.19"
+  val sourceCode    = mvn"com.lihaoyi::sourcecode:0.3.1"
+  val spire         = mvn"org.typelevel::spire:0.18.0"
+  val upickle       = mvn"com.lihaoyi::upickle:4.1.0"
+  val utest         = mvn"com.lihaoyi::utest:0.8.5"
 
   // Other Scala packages that don't have a `scalaVersion` suffix in the `artifactID`.
-  val reflections  = ivy"org.reflections:reflections:0.10.2"
-  val scalaReflect = ivy"org.scala-lang:scala-reflect:${scalaVersion}"
+  val reflections  = mvn"org.reflections:reflections:0.10.2"
+  val scalaReflect = mvn"org.scala-lang:scala-reflect:${scalaVersion}"
 }
 
 trait BaseModule extends ScalaModule {
@@ -44,8 +42,8 @@ trait BaseModule extends ScalaModule {
 }
 
 trait ChiselModule extends BaseModule {
-  def ivyDeps             = Agg(v.chisel)
-  def scalacPluginIvyDeps = Agg(v.chiselPlugin)
+  def mvnDeps             = Seq(v.chisel)
+  def scalacPluginMvnDeps = Seq(v.chiselPlugin)
 
   // Options recommended by Chisel. Inspect these when updating Chisel versions.
   def scalacOptions = Seq(
@@ -53,16 +51,12 @@ trait ChiselModule extends BaseModule {
     "-deprecation",
     "-language:reflectiveCalls",
     "-feature",
+    "-Wconf:msg=will no longer have a structural type:s",
     "-Xcheckinit",
     "-Ywarn-dead-code",
     "-Ywarn-unused",
     "-Ymacro-annotations",
   )
-
-  def repositoriesTask = Task.Anon {
-    super.repositoriesTask() ++
-    Seq(coursier.maven.MavenRepository("https://s01.oss.sonatype.org/content/repositories/snapshots"))
-  }
 }
 
 trait TdhModule extends ChiselModule with ScalafmtModule with ScalafixModule
@@ -71,12 +65,12 @@ trait TdhModule extends ChiselModule with ScalafmtModule with ScalafixModule
 
 object tools extends Module {
   object cde extends BaseModule {
-    def millSourcePath = super.millSourcePath / "cde"
+    def moduleDir = super.moduleDir / "cde"
   }
 
   // Main entry point for chipyard builds
   object `cy-main` extends TdhModule {
-    def ivyDeps    = super.ivyDeps() ++ Agg(v.mainargs)
+    def mvnDeps    = super.mvnDeps() ++ Seq(v.mainargs)
     def moduleDeps = Seq(fpga, generators.chipyard)
 
     // Prohibit warnings
@@ -84,6 +78,7 @@ object tools extends Module {
 
     // Support ScalaPy
     override def forkArgs = {
+      import mill.api.BuildCtx
       import ai.kien.python.Python
       lazy val python   = Python()
       lazy val javaOpts = python.scalapyProperties.get.map { case (k, v) => s"""-D$k=$v""" }.toSeq
@@ -91,10 +86,14 @@ object tools extends Module {
     }
   }
 
+  object `sram-generator` extends TdhModule {
+    def mvnDeps    = super.mvnDeps() ++ Seq(v.osLib, v.upickle, v.mainargs)
+  }
+
   object fixedpoint extends ChiselModule with SbtModule {}
 
   object dsptools extends ChiselModule with SbtModule {
-    def ivyDeps    = super.ivyDeps() ++ Agg(v.breeze, v.chiselTest, v.spire)
+    def mvnDeps    = super.mvnDeps() ++ Seq(v.breeze, v.spire)
     def moduleDeps = Seq(fixedpoint)
   }
 
@@ -114,7 +113,7 @@ object generators extends Module {
   }
 
   object chipyard extends ChiselModule with SbtModule {
-    def ivyDeps    = super.ivyDeps() ++ Agg(v.reflections, v.scalaGraph)
+    def mvnDeps    = super.mvnDeps() ++ Seq(v.reflections, v.scalaGraph)
     def moduleDeps = Seq(
       // New projects
       // Upstream projects
@@ -139,13 +138,13 @@ object generators extends Module {
   }
 
   object barf extends ChiselModule with SbtModule {
-    override def millSourcePath = super.millSourcePath / os.up / "bar-fetchers"
+    def moduleDir = super.moduleDir / os.up / "bar-fetchers"
     def moduleDeps = Seq(`rocket-chip`)
   }
 
   object diplomacy extends ChiselModule {
-    def ivyDeps        = super.ivyDeps() ++ Agg(v.sourceCode)
-    def millSourcePath = super.millSourcePath / "diplomacy"
+    def mvnDeps        = super.mvnDeps() ++ Seq(v.sourceCode)
+    def moduleDir = super.moduleDir / "diplomacy"
     def moduleDeps     = Seq(tools.cde)
   }
 
@@ -154,15 +153,15 @@ object generators extends Module {
   }
 
   object hardfloat extends ChiselModule with SbtModule {
-    def millSourcePath = super.millSourcePath / "hardfloat"
+    def moduleDir = super.moduleDir / "hardfloat"
   }
 
   object `rocket-chip` extends ChiselModule with SbtModule {
     def moduleDeps = Seq(tools.cde, diplomacy, hardfloat, macros)
-    def ivyDeps    = super.ivyDeps() ++ Agg(v.mainargs, v.json4sJackson, v.sourceCode)
+    def mvnDeps    = super.mvnDeps() ++ Seq(v.mainargs, v.json4sJackson, v.sourceCode)
 
     object macros extends BaseModule with SbtModule {
-      def ivyDeps = Agg(v.scalaReflect)
+      def mvnDeps = Seq(v.scalaReflect)
     }
   }
 
@@ -171,8 +170,8 @@ object generators extends Module {
   }
 
   object `rocket-chip-inclusive-cache` extends ChiselModule {
-    def millSourcePath = super.millSourcePath / "design" / "craft" / "inclusivecache"
-    def moduleDeps     = Seq(`rocket-chip`)
+    def moduleDir = super.moduleDir / "design" / "craft" / "inclusivecache"
+    def moduleDeps = Seq(`rocket-chip`)
   }
 
   object saturn extends ChiselModule with SbtModule {
