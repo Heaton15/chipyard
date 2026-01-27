@@ -86,10 +86,6 @@ object tools extends Module {
     }
   }
 
-  object `sram-generator` extends TdhModule {
-    def mvnDeps    = super.mvnDeps() ++ Seq(v.osLib, v.upickle, v.mainargs)
-  }
-
   object fixedpoint extends ChiselModule with SbtModule {}
 
   object dsptools extends ChiselModule with SbtModule {
