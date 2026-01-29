@@ -27,10 +27,10 @@ class BlockHarness(implicit val p: Parameters) extends Module {
       val io = IO(chiselTypeOf(port))
       io.suggestName(name)
       DataMirror.directionOf(io) match {
-        case ActualDirection.Input                 => port :<= io
-        case ActualDirection.Output                => io   :<= port
-        case ActualDirection.Bidirectional.Default => io   :<= port
-        case ActualDirection.Bidirectional.Flipped => port :<= io
+        case ActualDirection.Input                 => port := io
+        case ActualDirection.Output                => io   := port
+        case ActualDirection.Bidirectional.Default => io   <> port
+        case ActualDirection.Bidirectional.Flipped => port <> io
         case ActualDirection.Empty                 => println("Skipping ActualDirection.Empty in BlockHarness")
         case ActualDirection.Unspecified           => println("Skipping ActualDirection.Unspecified in BlockHarness")
         case _ => throw new Exception("Unrecognized port direction encountered for Datamirror.directionOf(...)")
